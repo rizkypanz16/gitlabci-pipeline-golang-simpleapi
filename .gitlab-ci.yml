@@ -1,0 +1,52 @@
+stages:
+  - build
+  - deploy_dev
+  - deploy_prod
+
+build:
+  stage: build
+  tags:
+    - gitlab-runner1
+  script:
+    - echo "build docker images"
+    - docker login 192.168.7.61 -u admin -p ijinmasuk
+    - docker build -t 192.168.7.61/golang-simpleapi:v3 .
+    - docker push 192.168.7.61/golang-simpleapi:v3
+    - echo "build successfully"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_MESSAGE =~ /build/'
+      when: on_success
+
+#DEVELOPMENT
+deploy_dev:
+  stage: deploy_dev
+  tags:
+    - panzdocker-1
+  script:
+    - echo "deploy to development environment"
+    - docker login 192.168.7.61 -u admin -p ijinmasuk
+    - docker run -itd --name golang-simpleapi -p 8080:8080 192.168.7.61/golang-simpleapi:v3
+    - echo "deploy to development successfully"
+  environment:
+    name: development
+    url: http://192.168.7.31:8080
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_MESSAGE =~ /deploy_dev/'
+      when: manual
+
+#PRODUCTION
+deploy_prod:
+  stage: deploy_prod
+  tags:
+    - panzdocker-2
+  script:
+    - echo "deploy to production environment"
+    - docker login 192.168.7.61 -u admin -p ijinmasuk
+    - docker run -itd --name golang-simpleapi -p 8080:8080 192.168.7.61/golang-simpleapi:v3
+    - echo "deploy to production successfully"
+  environment:
+    name: production
+    url: http://192.168.7.31:8080
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_MESSAGE =~ /deploy_prod/'
+      when: manual
